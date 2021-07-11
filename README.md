@@ -1,3 +1,3 @@
-ventasV5.3
+VentasV5.3
 
-FoxPro 2.6 System - SALES & INVENTORY
+FoxPro 2.6 System - SALES & INVENTORY (excluding DB Tables)
