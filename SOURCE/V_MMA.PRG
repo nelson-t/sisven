@@ -1,0 +1,255 @@
+* Programa para obtener Movimientos Mensuales de Almacen
+* de Productos Terminados
+
+CLEAR
+CLOSE DATA
+set exclu off
+SET DATE TO FRENCH
+
+STORE CTOD("") TO FECHA_I,FECHA_F
+GEST_INI=IIF(MONTH(DATE())<4,CTOD('01/04/'+STR(YEAR(DATE())-1,4,0)),CTOD('01/04/'+STR(YEAR(DATE()),4,0)))
+STORE " " TO ALMACEN,MI_EMPRESA,ALMAC,TIPOR
+LINEA=SPACE(3)
+EMPRESA="2"
+STORE 1 TO OPCION, V_OPC
+SELECT 1
+  USE V_ALM ORDER ALM
+
+DO V_MMA.SPR
+IF OPCION=3 .OR. LASTKEY()=27 
+   RETURN
+ENDIF
+IF V_OPC=1
+   SWKG=.F.
+   TIPOR="UNIDADES DE KARDEX"
+ELSE
+   SWKG=.T.
+   TIPOR="KILOGRAMOS"
+ENDIF      
+SELECT 2
+  USE v_tempo ORDER PART
+  REPLACE IT_INV WITH 0,IT_IP WITH 0,IT_OI WITH 0,IT_SV WITH 0, ;
+          IT_SNR WITH 0, IT_OS WITH 0, IT_IF WITH 0, IT_DSO WITH 0 ALL
+SELECT 3
+  USE V_LINEAS ORDER LINEA  
+SELECT 4
+  USE V_ITEMS ORDER PART
+SELECT 5
+  USE V_DOC_LN ORDER KARDEX
+  SET RELATION TO LD_EMPR+LD_PART INTO V_TEMPO
+
+GO TOP
+PART_ANT='*'
+DO WHILE .NOT. EOF()
+   IF LD_PART<>PART_ANT
+      PART_ANT=LD_PART
+      SW1=.T.
+      MI_REC=RECNO()
+      SALD_INI=GET_SAL(EMPRESA,ALMACEN,ALLTRIM(LD_PART),IIF(fecha_i=GEST_INI,fecha_i,fecha_i-1))
+      SET FILTER TO LD_ALM=ALMACEN.AND.LD_FECHA>=FECHA_I.AND.LD_FECHA<=FECHA_F 
+      GO MI_REC
+      IF SALD_INI=0
+         IF LD_FECHA>=FECHA_I
+            IF LOCK('V_TEMPO')
+               REPLACE V_TEMPO->IT_DSO WITH (LD_FECHA-FECHA_I)
+            ENDIF
+         ENDIF
+      ENDIF
+      IF LOCK('V_TEMPO')
+         REPLACE V_TEMPO->IT_INV WITH SALD_INI
+      ENDIF
+   ENDIF   
+   IF LD_INSAL='1'
+      IF SWKG
+         DO CASE
+            CASE LD_TIPO='I'
+                 IF LOCK('V_TEMPO')
+                    REPLACE V_TEMPO->IT_IP WITH V_TEMPO->IT_IP+LD_PESO
+                 ENDIF
+            CASE LD_TIPO='D'.OR. LD_TIPO='T'        
+                 IF LOCK('V_TEMPO')
+                    REPLACE V_TEMPO->IT_OI WITH V_TEMPO->IT_OI+LD_PESO
+                 ENDIF
+         ENDCASE
+         SALD_INI=SALD_INI+LD_PESO
+         IF LOCK('V_TEMPO')
+            REPLACE V_TEMPO->IT_IF WITH V_TEMPO->IT_IF + LD_PESO
+         ENDIF
+      ELSE
+         DO CASE
+            CASE LD_TIPO='I'
+                 IF LOCK('V_TEMPO')
+                    REPLACE V_TEMPO->IT_IP WITH V_TEMPO->IT_IP+LD_CANT              
+                 ENDIF   
+            CASE LD_TIPO='D'.OR. LD_TIPO='T'        
+                 IF LOCK('V_TEMPO')            
+                    REPLACE V_TEMPO->IT_OI WITH V_TEMPO->IT_OI+LD_CANT              
+                 ENDIF
+         ENDCASE
+         SALD_INI=SALD_INI+LD_CANT
+         IF LOCK('V_TEMPO')         
+            REPLACE V_TEMPO->IT_IF WITH V_TEMPO->IT_IF + LD_CANT
+         ENDIF
+      ENDIF   
+   ELSE
+      IF SWKG
+         DO CASE
+            CASE LD_TIPO='N'.OR.LD_TIPO='R' .AND. LD_ESTADO='F'
+                 IF LOCK('V_TEMPO')            
+                    REPLACE V_TEMPO->IT_SV WITH V_TEMPO->IT_SV + LD_PESO
+                 ENDIF
+            CASE LD_TIPO='N'.OR.LD_TIPO='R' .AND. LD_ESTADO=' '
+                 IF LOCK('V_TEMPO')            
+                    REPLACE V_TEMPO->IT_SNR WITH V_TEMPO->IT_SNR + LD_PESO
+                 ENDIF
+            CASE LD_TIPO='U'
+                 IF LOCK('V_TEMPO')
+                    REPLACE V_TEMPO->IT_OS WITH V_TEMPO->IT_OS + LD_PESO
+                 ENDIF   
+         ENDCASE      
+         SALD_INI=SALD_INI-LD_PESO
+         IF LOCK('V_TEMPO')         
+            REPLACE V_TEMPO->IT_IF WITH V_TEMPO->IT_IF - LD_PESO
+         ENDIF
+      ELSE
+         DO CASE
+            CASE LD_TIPO='N'.OR.LD_TIPO='R' .AND. LD_ESTADO='F'
+                 IF LOCK('V_TEMPO')
+                    REPLACE V_TEMPO->IT_SV WITH V_TEMPO->IT_SV + LD_CANT              
+                 ENDIF   
+            CASE LD_TIPO='N'.OR.LD_TIPO='R' .AND. LD_ESTADO=' '
+                 IF LOCK('V_TEMPO')
+                    REPLACE V_TEMPO->IT_SNR WITH V_TEMPO->IT_SNR + LD_CANT              
+                 ENDIF   
+            CASE LD_TIPO='U'
+                 IF LOCK('V_TEMPO')
+                    REPLACE V_TEMPO->IT_OS WITH V_TEMPO->IT_OS + LD_CANT              
+                 ENDIF   
+         ENDCASE      
+         SALD_INI=SALD_INI-LD_CANT
+         IF LOCK('V_TEMPO')
+            REPLACE V_TEMPO->IT_IF WITH V_TEMPO->IT_IF - LD_CANT         
+         ENDIF   
+      ENDIF
+   ENDIF   
+   IF SALD_INI=0
+      FECHA1=LD_FECHA
+      IF SW1
+      SKIP -1
+      IF PART_ANT<>LD_PART
+         SKIP
+         IF LOCK('V_TEMPO')
+            REPLACE V_TEMPO->IT_DSO WITH V_TEMPO->IT_DSO + (LD_FECHA-FECHA_I)
+         ENDIF   
+      ENDIF
+      SKIP
+      SW1=.F.
+      ENDIF
+      SKIP
+      IF PART_ANT=LD_PART 
+         IF LOCK('V_TEMPO')
+            REPLACE V_TEMPO->IT_DSO WITH V_TEMPO->IT_DSO + (LD_FECHA-FECHA1)
+         ENDIF   
+         SKIP -1         
+      ELSE
+         SKIP -1
+         IF LOCK('V_TEMPO')
+            REPLACE V_TEMPO->IT_DSO WITH V_TEMPO->IT_DSO + (FECHA_F-FECHA1)
+         ENDIF
+      ENDIF
+   ENDIF      
+   SKIP
+ENDDO
+SET FILTER TO
+SELECT V_TEMPO
+SET RELATION TO IT_EMPR+IT_PART INTO V_ITEMS
+SET RELATION TO IT_EMPR+IT_LINEA INTO V_LINEAS ADDITIVE
+DO CASE
+  CASE OPCION=1 .AND. LASTKEY()<>27
+    REPORT FORM V_MMA FOR ((IT_IP+IT_OI)<>0 .OR. (IT_SV+IT_SNR)<>0) .AND. IT_LINEA=ALLTRIM(LINEA) TO FILE V:V_MMA.TXT NOCONSOLE
+    DEFINE WINDOW reporte FROM 0,0 TO 24,79 TITLE "> Presione [Esc] para Salir <" DOUBLE
+    MODI COMM V:V_MMA.TXT WINDOW reporte NOEDIT    
+    RELEASE WINDOW reporte
+  CASE OPCION=2 .AND. LASTKEY()<>27
+    REPORT FORM V_MMA FOR ((IT_IP+IT_OI)<>0 .OR. (IT_SV+IT_SNR)<>0) .AND. IT_LINEA=ALLTRIM(LINEA) TO FILE V:V_MMA.TXT NOCONSOLE
+    ! NPRINT V:V_MMA.TXT NB NFF Q=SERVER   
+  CASE OPCION=3 .OR. LASTKEY()=27
+ENDCASE
+CLOSE DATA
+CLEAR
+RETURN
+
+FUNCTION get_SAL
+****************
+PARAMETER EMPRESA,ALM,PARTE,FECHA
+
+STORE 0 TO SALDO,T_INV,T_INVK,T_ING,T_INGK,TOT_KG,T_SAL,T_SALK
+SELECT V_DOC_LN
+SET FILTER TO
+SET ORDER TO KARDEX
+SEEK EMPRESA+PARTE
+DO WHILE .NOT. EOF() .AND. LD_EMPR=EMPRESA .AND. LD_PART=PARTE .AND. LD_FECHA <= FECHA
+ IF LD_ALM=ALLTRIM(ALM)
+   DO CASE
+     CASE LD_INSAL='1'
+       IF LD_TIPO='A'
+         T_INV=T_INV+LD_CANT
+         T_INVK=T_INVK+LD_PESO
+       ELSE
+         T_ING=T_ING+LD_CANT
+         T_INGK=T_INGK+LD_PESO
+       ENDIF
+       SALDO =SALDO +LD_CANT
+       TOT_KG=TOT_KG+LD_PESO
+     CASE LD_INSAL='2'
+       IF LD_TIPO='A'
+         T_INV=T_INV-LD_CANT
+         T_INVK=T_INVK-LD_PESO
+       ELSE
+         T_SAL=T_SAL+LD_CANT
+         T_SALK=T_SALK+LD_PESO
+       ENDIF
+      SALDO =SALDO-LD_CANT
+      TOT_KG=TOT_KG-LD_PESO
+   ENDCASE 
+ ENDIF
+ SKIP
+ENDDO
+IF SWKG
+   RETURN TOT_KG
+ELSE   
+   RETURN SALDO
+ENDIF   
+
+FUNCTION GET_EMPR
+*****************
+PARAMETER EMPR
+SELECT 0
+USE V_EMPR ORDER EMPR
+SEEK EMPR
+IF EOF()
+  USE
+  RETURN .F.
+ELSE
+  MI_EMPRESA=EM_DESCR
+  @ 9,46 SAY RTRIM(MI_EMPRESA)
+  USE
+  RETURN .T.
+ENDIF
+
+FUNCTION CHECK_ALM
+*******************
+PARAMETER EMPRESA,ALM
+SELECT V_ALM
+SEEK EMPRESA+ALM
+IF EOF()
+  if lastkey()=27
+    return .t.
+  endif
+  RETURN .F.
+ELSE
+  ALMAC=RTRIM(V_ALM.AL_DESCR)
+  @ 11,46 SAY SPACE(25)
+  @ 11,46 SAY ALMAC
+  RETURN .T.
+ENDIF

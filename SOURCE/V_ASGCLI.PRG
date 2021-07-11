@@ -1,0 +1,25 @@
+SET TALK OFF
+CLEAR
+CLOSE ALL
+select 1
+use v_doc_hd INDEX  VD_DESCR
+select 2
+use v_client INDEX CLIENTES
+
+
+select 1
+seek 'O'
+do while .not. eof() .AND. HD_TIPO='O'
+  IF V_DOC_HD.HD_OBS<>'&'
+   SELECT V_CLIENT
+   LOCATE FOR SUBSTR(ALLTRIM(V_DOC_HD.HD_OBS),1,17)$CL_RAZON .OR. ALLTRIM(CL_RAZON)$V_DOC_HD.HD_OBS
+   IF FOUND()
+      REPLACE V_DOC_HD.HD_COD_CL WITH CL_CODIGO
+      ? V_DOC_HD.HD_OBS, CL_RAZON
+   ELSE
+      ? V_DOC_HD.HD_OBS
+   ENDIF  
+ ENDIF 
+ SELECT V_DOC_HD   
+ skip
+enddo

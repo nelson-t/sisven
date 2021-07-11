@@ -1,0 +1,170 @@
+******************
+PROCEDURE V_REC_AL
+******************
+ON KEY LABEL F10 KEYBOARD CHR(23)
+
+DEFINE WINDOW REC_HD ;
+		FROM 0, 0 ;
+		TO 8,79 ;
+		TITLE "RECIBO DE CAJA" ;
+		NOFLOAT ;
+		DOUBLE 
+
+VENDEDOR=SPACE(20)
+NR_CABEZA=SYS(3)
+NR_LINEAS=SYS(3)
+PESO_U=0
+
+SELECT 5 && E
+USE V_DOC_HD ORDER NR            &&CORRE=EMPR+TIPO+NRO
+SET RELATION TO HD_EMPR INTO V_EMPR
+SET RELATION TO HD_EMPR+HD_COD_VEN INTO V_VENDOR ADDITIVE
+
+SELECT 6 && F
+USE V_DOC_LN ORDER NR            &&CORRE=EMPR+TIPO+NRO
+
+SELECT V_DOC_HD
+APPEND BLANK
+IF LOCK()
+  REPLACE HD_EMPR   WITH V_PED_HD.HP_EMPR, ;
+          HD_NRO    WITH V_NEXT_N(EMPRESA,'NR'), ;
+          HD_TIPO   WITH 'R', ;
+          HD_FECHA  WITH DATE(), ;
+          HD_PEDIDO WITH V_PED_HD.HP_NRO, ;
+          HD_COD_CL WITH V_PED_HD.HP_COD_CL
+ENDIF
+       
+ACTIVATE WINDOW NR_HD
+
+SELECT V_DOC_HD
+OKCANCEL=1
+
+DO V_NR_M.SPR
+
+  SELECT V_DOC_HD
+  DO V_NR_V.SPR
+  ACTIVATE SCREEN
+  SELECT V_PED_LN
+  SEEK V_PED_HD.HP_EMPR+V_PED_HD.HP_NRO
+  DO WHILE .NOT. EOF() .AND. V_PED_HD.HP_EMPR+V_PED_HD.HP_NRO=LP_EMPR+LP_NRO
+    SELECT V_DOC_LN
+    APPEND BLANK
+    IF V_PED_LN.LP_ESTADO$'PI' .AND. LOCK()
+      REPLACE LD_EMPR    WITH E.HD_EMPR, ;
+              LD_ALM     WITH E.HD_ALM, ;
+              LD_TIPO    WITH E.HD_TIPO, ;
+              LD_NRO     WITH E.HD_NRO, ;
+              LD_FECHA   WITH E.HD_FECHA, ;
+              LD_INSAL   WITH '28', ;
+              LD_COD_CL  WITH E.HD_COD_CL, ;
+              LD_COD_VEN WITH E.HD_COD_VEN, ;
+              LD_PART    WITH V_PED_LN.LP_PART, ;
+              LD_LISTA   WITH V_PED_LN.LP_LISTA, ;
+              LD_PRECIO  WITH V_PED_LN.LP_PRECIO
+      MI_CANT=GET_CANT(LD_EMPR,LD_ALM,LD_PART)
+      REPLACE LD_CANT    WITH IIF(V_PED_LN.LP_PEND<=MI_CANT,V_PED_LN.LP_PEND,MI_CANT), ;
+              LD_PESO    WITH PESO_U*LD_CANT
+    ENDIF
+    SELECT V_PED_LN
+    SKIP
+  ENDDO
+  
+  SELECT V_DOC_LN
+  SET RELATION TO LD_EMPR+V_DOC_HD.HD_PEDIDO+LD_PART INTO V_PED_LN ADDITIVE
+
+  GO TOP
+  BROWSE NODELETE NOAPPEND NOCLEAR ;
+         KEY V_DOC_HD.HD_EMPR+V_DOC_HD.HD_TIPO+V_DOC_HD.HD_NRO ;
+         FIELDS LD_PART:H='CODIGO':P='@S8 !!!!!!!!!!!!!!!':R, ;
+         DESCR=V_ITEMS.IT_DESCR:W=.F., ;
+         V_ITEMS.IT_UNIDAD:H='UNI.':W=.F., ;
+         V_PED_LN.LP_PEND:H='PED.PEND.':P='999999.99':W=.F., ;
+         LD_CANT:H='CANTIDAD':P='999999.99':V=IIF(LD_CANT<=V_PED_LN.LP_CANT,.T.,.F.) .AND. CHK_CANT(LD_EMPR,LD_ALM,LD_PART):E='CANTIDAD ERRONEA', ;
+         LD_PESO:H='PESO TOT.':P='999,999.99':R ;
+         WINDOW PED_LN  ;
+         TITLE '[F10] - ACEPTA NOTA   [ESC] - ANULA NOTA' 
+
+  IF LASTKEY()<>27
+    SEEK V_DOC_HD.HD_EMPR+V_DOC_HD.HD_TIPO+V_DOC_HD.HD_NRO
+    DO WHILE .NOT. EOF() .AND. V_DOC_HD.HD_EMPR+V_DOC_HD.HD_TIPO+V_DOC_HD.HD_NRO=LD_EMPR+LD_TIPO+LD_NRO
+      IF LD_CANT=0 
+        DELETE
+      ELSE
+        * ACTUALIZACION DE TABLA DE ITEMS EN ESTE LUGAR
+        *
+        *
+        IF LOCK('V_ITEMS')
+           replace v_items.it_saldo with v_items.it_saldo-LD_CANT
+           UNLOCK IN V_ITEMS
+        ENDIF                      
+        IF LOCK('V_PED_LN')
+          REPLACE V_PED_LN.LP_PEND WITH V_PED_LN.LP_PEND-LD_CANT
+        ENDIF
+        IF V_PED_LN.LP_PEND=0
+          REPLACE V_PED_LN.LP_ESTADO WITH 'D'
+        ELSE
+          IF V_PED_LN.LP_PEND <> V_PED_LN.LP_CANT
+            IF LOCK('V_PED_LN')
+              REPLACE V_PED_LN.LP_ESTADO WITH 'I'
+            ENDIF
+          ENDIF  
+        ENDIF
+      ENDIF
+      SKIP
+    ENDDO
+
+  ELSE
+    SEEK V_DOC_HD.HD_EMPR+V_DOC_HD.HD_TIPO+V_DOC_HD.HD_NRO
+    IF .NOT. EOF()
+      REPLACE LD_INSAL   WITH '  ', ;
+              LD_COD_CL  WITH SPACE(6), ;
+              LD_COD_VEN WITH SPACE(3), ;
+              LD_PART    WITH SPACE(15), ;
+              LD_CANT WITH 0, ;
+              LD_PESO WITH 0, ;
+              LD_ESTADO WITH 'A'
+      SKIP
+    ENDIF
+    DO WHILE .NOT. EOF() .AND. V_DOC_HD.HD_EMPR+V_DOC_HD.HD_TIPO+V_DOC_HD.HD_NRO=LD_EMPR+LD_TIPO+LD_NRO .AND. LOCK()
+        REPLACE LD_EMPR    WITH ' ', ;
+                LD_ALM     WITH '  ', ;
+                LD_TIPO    WITH ' ', ;
+                LD_NRO     WITH SPACE(6), ;
+                LD_FECHA   WITH {  /  /  }, ;
+                LD_INSAL   WITH '  ', ;
+                LD_COD_CL  WITH SPACE(6), ;
+                LD_COD_VEN WITH '   ', ;
+                LD_PART    WITH SPACE(15), ;
+                LD_CANT WITH 0, ;
+                LD_PESO WITH 0
+        DELETE
+      SKIP
+    ENDDO
+    SELECT V_DOC_HD
+    IF LOCK()
+      REPLACE HD_OBS    WITH '** ANULADO', ;
+              HD_PEDIDO WITH SPACE(6), ;
+              HD_COD_CL WITH SPACE(6), ;
+              HD_ESTADO WITH 'A'
+    ENDIF
+    MENSAJE1='LA NOTA DE REMISION NRO.:'+HD_NRO+' HA SIDO ANULADA'
+    MENSAJE2=''
+    DO V_MENSAJ.SPR
+  ENDIF
+  * IMPRESION DE NOTA DE REMISION
+  MENSAJE1='LA NOTA DE REMISION SE IMPRIMIRA'
+  MENSAJE2='!!!! ALISTE LA IMPRESORA !!!!'
+  DO V_MENSAJ.SPR
+  DO NR_IMPR
+
+SELECT E
+USE
+SELECT F
+USE
+
+RELEASE WINDOW NR_HD
+
+FLUSH
+DO ON_KEYS
+SELECT V_PED_HD
+RETURN

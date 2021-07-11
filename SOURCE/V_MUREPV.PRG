@@ -1,0 +1,61 @@
+PROCEDURE V_MUREPV
+******************
+IF .NOT. V_USRAUT(USER,"REPS_COM",1)  
+   RETURN
+ENDIF
+
+OPCION=1
+SET DATE FRENCH
+SET DELE ON
+
+DO WHILE .T.
+  DO V_MUREPV.SPR
+  SET CLOCK OFF
+  DO CASE
+    CASE OPCION=1
+      DO V_LIBROV
+    CASE OPCION=2
+      DO V_RKILOS
+    CASE OPCION=3
+      CUAL=1
+      DO V_FONDO.SPR
+      DO V_CUAL_R.SPR
+      DO CASE
+        CASE CUAL=1 .AND. LASTKEY()<>27
+          DO V_RNRS
+        CASE CUAL=2 .AND. LASTKEY()<>27
+          DO V_NRXFXC
+     ENDCASE     
+    CASE OPCION=4
+      CUAL=1
+      DO V_FONDO.SPR
+      DO V_CUAL_E.SPR
+      DO CASE
+        CASE CUAL=1 .AND. LASTKEY()<>27
+          DO V_LISCLI
+        CASE CUAL=2 .AND. LASTKEY()<>27
+          DO V_RESTCL
+     ENDCASE     
+    CASE OPCION=5
+      DO V_RCAJA
+    CASE OPCION=6
+      DO V_RDEUDA
+    CASE OPCION=7
+      CUAL=1
+      DO V_FONDO.SPR
+      DO V_CUAL_P.SPR
+      DO CASE
+        CASE CUAL=1
+          DO V_PP
+        CASE CUAL=2
+          DO V_PP_OPC
+      ENDCASE
+    CASE OPCION=8
+      DO V_RUTIL
+  ENDCASE
+  IF OPCION=9
+    EXIT
+  ENDIF
+ENDDO
+CLEAR
+RETURN

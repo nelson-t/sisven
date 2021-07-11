@@ -1,0 +1,7 @@
+FUNCTION V_VALACC
+*****************
+IF PROGRAM(0)="V_MUMAIN" 
+  RETURN .T.
+ELSE
+  RETURN .F.
+ENDIF  

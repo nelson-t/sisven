@@ -1,0 +1,77 @@
+PROCEDURE V_FAC_AR
+******************
+IF V_FAC_HD.HF_TIPO='O'   && CONTADO
+  
+  SELECT V_DOC_HD
+  SET ORDER TO FACTURA
+    
+  SEEK V_FAC_HD.HF_EMPR+str(V_FAC_HD.HF_NDOSIF,4)+V_FAC_HD.HF_NRO
+
+  NRO_EMPR=HD_EMPR
+  NRO_PED =HD_PEDIDO
+  
+  IF LOCK()
+      REPLACE HD_ESTADO WITH 'A', ;
+              HD_OBS WITH '* * * A N U L A D A * * *', ;
+              HD_MIGRA WITH ' '
+  ENDIF
+
+  SELECT V_DOC_LN
+  SET ORDER TO NR
+  
+  SEEK V_DOC_HD.HD_EMPR+V_DOC_HD.HD_TIPO+V_DOC_HD.HD_NRO
+
+  IF .NOT. EOF() .AND. LOCK()
+        REPLACE LD_ESTADO WITH 'A', ;
+                LD_PART WITH SPACE(15), ;
+                LD_COD_CL WITH SPACE(8), ;
+                LD_COD_VEN WITH SPACE(30), ; 
+                LD_CANT WITH 0, ;
+                LD_PESO WITH 0, ;
+                LD_PRECIO WITH 0, ;
+                LD_LISTA WITH 0
+        SKIP             
+        DO WHILE .NOT. EOF() .AND. V_DOC_HD.HD_EMPR+V_DOC_HD.HD_TIPO+V_DOC_HD.HD_NRO=LD_EMPR+LD_TIPO+LD_NRO
+          IF LOCK()
+            DELETE
+          ENDIF
+          SKIP
+        ENDDO
+  ENDIF     
+  
+ELSE
+
+  SELECT V_DOC_HD
+  SET ORDER TO FACTURA
+    
+  SEEK V_FAC_HD.HF_EMPR+str(V_FAC_HD.HF_NDOSIF,4)+V_FAC_HD.HF_NRO
+
+  DO WHILE .NOT. EOF()
+  
+    IF LOCK()
+        REPLACE HD_ESTADO WITH ' ', HD_FACTURA WITH SPACE(6), HD_MIGRA WITH ' '
+    ENDIF
+
+    SELECT V_DOC_LN
+    SET ORDER TO NR
+ 
+    SEEK V_DOC_HD.HD_EMPR+V_DOC_HD.HD_TIPO+V_DOC_HD.HD_NRO
+  
+    DO WHILE .NOT. EOF() .AND. V_DOC_HD.HD_EMPR+V_DOC_HD.HD_TIPO+V_DOC_HD.HD_NRO=LD_EMPR+LD_TIPO+LD_NRO
+      IF LOCK()
+          REPLACE LD_ESTADO WITH ' ' 
+      ENDIF     
+      SKIP
+    ENDDO
+
+    SELECT V_DOC_HD
+    SEEK V_FAC_HD.HF_EMPR+V_FAC_HD.HF_NRO
+  ENDDO
+ENDIF  
+
+SELECT V_DOC_HD
+SET ORDER TO NR
+
+SELECT V_FAC_HD
+
+RETURN

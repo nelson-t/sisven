@@ -1,0 +1,7 @@
+PROCEDURE V_SETPRO
+
+*Sets PUBLIC properties
+
+PUBLIC SISVER
+SISVER="4.3"
+

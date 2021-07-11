@@ -1,0 +1,239 @@
+﻿<!--A partir de aquí la parte superior HTML-->
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type" />
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+<script type="text/javascript" src="..\..\JS\QRCode\jquery.min.js"></script>
+<script type="text/javascript" src="..\..\JS\QRCode\qrcode.js"></script>
+<title>FACTURA_<<_NFAC>></title>
+<style type="text/css">
+@media print {
+@page { margin-top: 0; margin-bottom: 0;}
+body {
+	-webkit-print-color-adjust: exact; margin-top: 1.0cm;
+}
+}
+body {
+	font-size: x-small; font-family:Verdana;
+}
+td {
+	text-align: left; height: 0.3cm;
+}
+th {
+	text-align: center; height: 0.4cm;
+}
+#mainTable {
+	width: 95%; 	margin: 0px auto;
+}
+#topTable {
+	width: 100%; margin: 0px auto;
+}
+#topTable td {
+	vertical-align: top;
+}
+#centerTable {
+	width: 100%; margin: 0px auto; 
+}
+#centerTable th {
+	text-align: center; 
+}
+#datosIzquierda {
+	width: 100%; font-size: x-small;
+}
+#datosCentro {
+	width: 100%;
+}
+#datosCentro td {
+	text-align: center;
+}
+.textoResaltado {
+	font-weight: bold; 	font-size: x-small;
+}
+.actividades {
+	text-align: center; font-size: xx-small;
+}
+.num {
+	text-align: right;
+}
+</style>
+</head>
+
+<body>
+<!--A partir de aquí la parte superior de la factura-->
+<table id="mainTable">
+	<tr>
+		<td>
+		<table id="topTable">
+			<colgroup>
+				<col span="1" style="width: 40%;" />
+				<col span="1" style="width: 15%;" />
+				<col span="1" style="width: 45%;" />
+			</colgroup>
+			<tr>
+				<td>
+				<table id="datosIzquierda" cellpadding="3" cellspacing="0">
+					<tr>
+						<td>
+						<img alt="INDUMIX" height="49" src="<<LOGO_FILE>>" width="182" /></td>
+					</tr>
+					<tr>
+						<td>De: <<_DE>></td>
+					</tr>
+					<tr>
+						<td><<_SUCURSAL>></td>
+					</tr>
+					<tr>
+						<td><<_DIRECCIO1>></td>
+					</tr>
+					<tr>
+						<td><<_DIRECCIO2>></td>
+					</tr>
+					<tr>
+						<td style="font-weight:bold"><<CIUDAD>>, <<HF.HF_FECHA>></td>
+					</tr>
+					</table>
+				</td>
+				<td>
+				<table id="datosCentro" cellpadding="3" cellspacing="0">
+					<tr>
+						<td style="font-size: medium; font-weight: bold">FACTURA</td>
+					</tr>
+					<tr>
+						<td></td>
+					</tr>
+					<tr>
+						<td>(<<COPIA>>)</td>
+					</tr>
+				</table>
+				</td>
+				<td>
+				<table cellpadding="3" cellspacing="0" style="width: 100%; border-spacing: 0px">
+					<tr class="textoResaltado">
+						<td style="text-align: right;">NIT: </td>
+						<td><<_NIT>></td>
+					</tr>
+					<tr class="textoResaltado">
+						<td style="text-align: right;">FACTURA NO.: </td>
+						<td><<HF.HF_NRO>></td>
+					</tr>
+					<tr class="textoResaltado">
+						<td style="text-align: right;">AUTORIZACION NO.:</td>
+						<td><<_NRO_AUT>></td>
+					</tr>
+					<tr>
+						<td class="actividades" colspan="2"><<_ACTIV_EC1>></td>
+					</tr>
+					<tr>
+						<td class="actividades" colspan="2"><<_ACTIV_EC2>></td>
+					</tr>
+					<tr>
+						<td class="actividades" colspan="2"><<_ACTIV_EC3>></td>
+					</tr>
+										
+				</table>
+				</td>
+			</tr>
+		</table>
+		<table style="width: 100%;">
+			<colgroup>
+				<col span="1" style="width: 60%;" />
+				<col span="1" style="width: 40%;" />
+			</colgroup>
+
+			<tr>
+				<td>Se&ntilde;or(es):<<CL.CL_RAZON>></td>
+				<td>Pedido Nro. <<_NRO_PED>></td>
+			</tr>
+			<tr>
+				<td>NIT:<<CL.CL_RUC>></td>
+				<td>N.R. No. <<_NRO_NR>></td>
+			</tr>
+		</table>
+		
+		
+		
+		<table id="centerTable">
+			<colgroup>
+				<col span="1" style="width: 2%;" />
+				<col span="1" style="width: 20%;" />
+				<col span="1" style="width: 33%;" />
+				<col span="1" style="width: 5%;" />
+				<col span="1" style="width: 10%;" />
+				<col span="1" style="width: 10%;" />
+				<col span="1" style="width: 20%;" />
+			</colgroup>
+			<tr style="background-color:#CCCCCC; text-align:center">
+				<th>#</th>
+				<th>CODIGO</th>
+				<th>DESCRIPCION</th>
+				<th>Unid</th>
+				<th>CANTIDAD</th>
+				<th>PRECIO</th>
+				<th>TOTAL Bs.</th>
+			</tr>
+<!--Desde aquí sin las líneas de factura-->
+			<tr style="font-weight:normal">
+				<td> <<I>> </td>
+		    	<td> <<_PART>> </td>
+		      	<td> <<_ITDE>> </td>        
+		      	<td> <<_UNME>> </td>         
+		      	<td class="num"> <<_CANT>> </td>
+		      	<td class="num"> <<_PREC>> </td>
+		      	<td class="num"> <<_SUTO>> </td>	
+		    </tr>
+<!--A partir de aquí la parte inferior de la factura-->
+			<tr>
+				<td colspan="6" style="text-align: right; height: 17px;">SUBTOTAL:</td>
+				<td class="num" style="height: 17px"><<_LTOT>></td>
+			</tr>
+			<tr>
+				<td colspan="6" style="text-align: right">+FLETES+EMBALAJES+OTROS:</td>
+				<td class="num"><<_TOTR>></td>
+			</tr>
+			<tr>
+				<td colspan="6" style="text-align: right">-DESCUENTOS:</td>
+				<td class="num"><<_TDES>></td>
+			</tr>
+			
+			<tr style="font-weight: bold">
+				<td colspan="6" style="text-align: right">TOTAL:</td>
+				<td class="num"><<_TFAC>></td>
+			</tr>
+			<tr style="vertical-align: top;">
+				<td colspan="7">SON: <<_LITE>></td>
+			</tr>
+			<tr style="vertical-align: top;">
+				<td colspan="6"><br />
+				Cod. Control: <<_CODCTRL>><br />
+				Fecha L&iacute;mite de Emisi&oacute;n: <<_A_FECHA>><br />
+				<br />
+				-<<_TEXTO_SIN>><br />
+				-<<_TEXTO_453>></td>
+				<td><div id="qrcode" style="margin:auto; width:120px; height:120px;"></div></td>
+			</tr>
+			</table>
+		</td>
+	</tr>
+</table>
+
+<!--Desde seccion final-->
+<script type="text/javascript">
+var qrcode = new QRCode(document.getElementById("qrcode"), {
+	width : 120,
+	height : 120
+});
+
+function makeCode () {		
+	var elText = "<<_CODQR>>";
+	qrcode.makeCode(elText);
+}
+
+makeCode();
+
+</script>
+
+</body>
+
+</html>

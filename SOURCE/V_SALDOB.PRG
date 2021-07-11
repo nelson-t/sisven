@@ -1,0 +1,89 @@
+* PROGRAMA CALCULA SALDOS Y MOVIMIENTOS
+* VARIABLE DE CALLING PROGRAMA
+* TRA, TRAK, DEV, DEVK, INV, INVK, ING, INGK, SALE, SALEK, OSALE, OSALEK, SALDO, SALDOK
+
+FUNCTION V_SALDOB
+*****************
+PARAMETER EMPRESA,ALM,PARTE
+SALDO=0
+SELECT DOC_LN
+SEEK EMPRESA+PARTE
+IF ALM<>'  ' .AND. .NOT. EOF()
+  DO WHILE .NOT. EOF() .AND. LD_EMPR=EMPRESA .AND. LD_PART=PARTE
+   IF LD_ALM=ALM
+     DO CASE
+       CASE LD_INSAL='1'
+         SALDO =SALDO +LD_CANT
+         SALDOK=SALDOK+LD_PESO
+         DO CASE
+           CASE LD_TIPO='A'  && INVENTARIO
+             INV =INV +LD_CANT
+             INVK=INVK+LD_PESO
+           CASE LD_TIPO='I'  && INGRESO A ALMACEN
+             ING =ING +LD_CANT
+             INGK=INGK+LD_PESO
+           CASE LD_TIPO='T'  .AND. ALM<>'  '
+             TRA =TRA +LD_CANT
+             TRAK=TRAK+LD_PESO
+           CASE LD_TIPO='D'  && DEVOLUCION
+             DEV =DEV +LD_CANT
+             DEVK=DEVK+LD_PESO
+         ENDCASE
+       CASE LD_INSAL='2'
+        SALDO=SALDO-LD_CANT
+        SALDOK=SALDOK-LD_PESO
+        DO CASE
+           CASE LD_TIPO='A'  && INVENTARIO
+             INV =INV -LD_CANT
+             INVK=INVK-LD_PESO
+           CASE LD_TIPO='R' .OR. LD_TIPO='N'   && VENTAS
+             SALE =SALE +LD_CANT
+             SALEK=SALEK+LD_PESO
+           OTHERWISE  && VENTAS
+             OSALE =OSALE +LD_CANT
+             OSALEK=OSALEK+LD_PESO
+        ENDCASE
+     ENDCASE 
+   ENDIF
+   SKIP
+  ENDDO
+  RETURN SALDO
+ELSE
+  DO WHILE .NOT. EOF() .AND. LD_EMPR=EMPRESA .AND. LD_PART=PARTE
+    DO CASE
+      CASE LD_INSAL='1'
+         SALDO=SALDO+LD_CANT
+         SALDOK=SALDOK+LD_PESO
+         DO CASE
+           CASE LD_TIPO='A'  && INVENTARIO
+             INV =INV +LD_CANT
+             INVK=INVK+LD_PESO
+           CASE LD_TIPO='I'  && INGRESO A ALMACEN
+             ING =ING +LD_CANT
+             INGK=INGK+LD_PESO
+           CASE LD_TIPO='T'  .AND. ALM<>'  '
+             TRA =TRA +LD_CANT
+             TRAK=TRAK+LD_PESO
+           CASE LD_TIPO='D'  && DEVOLUCION
+             DEV =DEV +LD_CANT
+             DEVK=DEVK+LD_PESO
+         ENDCASE
+      CASE LD_INSAL='2'
+        SALDO=SALDO-LD_CANT
+        SALDOK=SALDOK-LD_PESO
+        DO CASE
+           CASE LD_TIPO='A'  && INVENTARIO
+             INV =INV -LD_CANT
+             INVK=INVK-LD_PESO
+           CASE LD_TIPO='R' .OR. LD_TIPO='N'   && VENTAS
+             SALE =SALE +LD_CANT
+             SALEK=SALEK+LD_PESO
+           OTHERWISE   && USO INT./PEDIDO MATERIAL
+             OSALE =OSALE +LD_CANT
+             OSALEK=OSALEK+LD_PESO
+        ENDCASE
+    ENDCASE 
+    SKIP
+  ENDDO
+  RETURN SALDO
+ENDIF  

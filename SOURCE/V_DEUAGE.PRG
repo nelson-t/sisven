@@ -1,0 +1,305 @@
+******************
+PROCEDURE V_DEUAGE
+******************
+CLEAR
+SET SAFETY OFF
+
+EMPRESA='1'
+INDICEF=28
+INI_GEST={01/04/95}
+FECHAI=INI_GEST
+FECHAF=DATE()
+OPCION=1
+
+DO V_DEUAGE.SPR
+
+CLEAR
+
+IF OPCION=2 .OR. LASTKEY()=27
+  CLOSE DATA
+  RETURN
+ENDIF  
+
+INDICEF=INDICEF/100/360
+
+SELECT 1
+USE V_FAC_HD ORDER ESTADOS
+
+SELECT 2
+USE V_REC_HD ORDER ESTADOS
+
+SELECT 3
+USE V_CLIENT ORDER  CODIGO
+
+SET FILTER TO CL_EMPR=EMPRESA
+
+GO TOP
+
+EST_ARCH='C:\'+SYS(3)
+
+SELECT 0
+USE V_ESTCLI
+COPY STRUC TO (EST_ARCH) WITH CDX
+USE
+
+SELECT 0
+USE (EST_ARCH) ORDER FECHA ALIAS ESTADOS exclusive
+
+SELECT V_CLIENT
+
+DO WHILE .NOT. EOF()
+  CODIGO=CL_COD_CL
+  RAZON =CL_RAZON
+  SALD_INI=CL_SALD_AN
+
+  SELECT ESTADOS
+  ZAP
+  
+  APPEND BLANK
+  IF LOCK()
+    REPLACE OBS   WITH 'SALDO INICIO DE GESTION', ;
+            FECHA WITH INI_GEST, ;
+            DEBE  WITH IIF(SALD_INI>=0,SALD_INI,0), ;
+            HABER WITH IIF(SALD_INI<0 ,ABS(SALD_INI),0)
+  ENDIF          
+
+  SELECT V_FAC_HD
+
+  SEEK V_CLIENT.CL_EMPR+V_CLIENT.CL_COD_CL
+
+  DO WHILE .NOT. EOF() .AND. V_CLIENT.CL_EMPR+V_CLIENT.CL_COD_CL=HF_EMPR+HF_COD_CL
+    IF HF_ESTADO<>'A' .AND. HF_TIPO<>'O'
+      DO CASE
+        CASE HF_TIPO='O'  && FACTURA AL CONTADO
+          TTIPO='F.CO.'
+          TDEBE =hf_importe-HF_DSCTO_M-ROUND(hf_importe*(HF_DSCTO_P/100),2)+hf_fletes+hf_embala+hf_otros 
+          THABER=hf_importe-HF_DSCTO_M-ROUND(hf_importe*(HF_DSCTO_P/100),2)+hf_fletes+hf_embala+hf_otros 
+        CASE HF_TIPO='R'  && FACTURA AL CREDITO
+          TTIPO='F.CR.'
+          TDEBE=hf_importe-HF_DSCTO_M-ROUND(hf_importe*(HF_DSCTO_P/100),2)+hf_fletes+hf_embala+hf_otros 
+          THABER=0 
+        CASE HF_TIPO='X'  && NOTA DE CREDITO
+          TTIPO='N.C.'
+          TDEBE=0
+          THABER=hf_importe
+        CASE HF_TIPO='Y'  && NOTA DE DEBITO
+          TTIPO='N.D.'
+          TDEBE=HF_IMPORTE
+          THABER=0
+        CASE HF_TIPO='Z'  && COMUN. INTERNA
+          TTIPO='C.I.'
+          TDEBE=HF_IMPORTE
+          THABER=0
+      ENDCASE
+
+      SELECT ESTADOS
+      APPEND BLANK
+      IF LOCK()
+        REPLACE TIPO WITH TTIPO, ;
+              OBS WITH V_FAC_HD.HF_OBS, ;
+              FECHA WITH V_FAC_HD.HF_FECHA, NRO WITH V_FAC_HD.HF_NRO, ;
+              DEBE WITH TDEBE, HABER WITH THABER
+      ENDIF          
+    ENDIF
+    SELECT V_FAC_HD 
+    SKIP
+  ENDDO
+
+  SELECT V_REC_HD
+
+  SEEK V_CLIENT.CL_EMPR+V_CLIENT.CL_COD_CL
+  DO WHILE .NOT. EOF() .AND. V_CLIENT.CL_EMPR+V_CLIENT.CL_COD_CL=HR_EMPR+HR_COD_CL
+    IF HR_ESTADO<>'A' 
+      TDEBE=0
+      THABER=HR_TOT_BS
+      SELECT ESTADOS
+      APPEND BLANK
+      IF LOCK()
+        REPLACE TIPO WITH 'RCBO.', ;
+              OBS WITH 'ABONO A SU CUENTA', ;
+              FECHA WITH V_REC_HD.HR_FECHA, NRO WITH V_REC_HD.HR_NRO, ;
+              DEBE WITH TDEBE, HABER WITH THABER
+      ENDIF          
+    ENDIF
+    SELECT V_REC_HD
+    SKIP
+  ENDDO
+
+  T_DB=0
+  T_HB=0
+
+  FINANC=0
+  P_FINAN=0
+
+  FECHA1=INI_GEST
+
+  DEUD_0  =0
+  DEUD_30 =0
+  DEUD_60 =0
+  DEUD_90 =0
+  DEUD_120=0
+
+  SELECT ESTADOS
+  GO TOP
+
+  DO WHILE .NOT. EOF()
+    T_DB=T_DB+DEBE
+    T_HB=T_HB+HABER
+    T_SALDO=T_DB-T_HB
+    IF LOCK()
+      REPLACE SALDO WITH T_SALDO
+    ENDIF
+
+    FINANC=FINANC+(P_FINAN*(FECHA-FECHA1)*INDICEF)
+
+    P_FINAN=T_SALDO
+    FECHA1=FECHA
+    IF DEBE<>0 .AND. DEBE<>HABER
+        DO CASE
+          CASE FECHAF-FECHA <=30 
+              DEUD_0  =DEUD_0+DEBE
+          CASE FECHAF-FECHA <=60 
+              DEUD_30 =DEUD_30+DEBE
+          CASE FECHAF-FECHA <=90 
+              DEUD_60 =DEUD_60+DEBE
+          CASE FECHAF-FECHA <=120 
+              DEUD_90 =DEUD_90+DEBE
+          CASE FECHAF-FECHA >120 
+              DEUD_120=DEUD_120+DEBE
+        ENDCASE
+    ENDIF
+
+    SKIP
+  ENDDO
+
+  FINANC=FINANC+(P_FINAN*(FECHAF-FECHA1)*INDICEF)
+
+  MI_HABER=0
+    
+  GO TOP
+
+  DO WHILE .NOT. EOF()
+      IF HABER<>0 .AND. HABER<>DEBE
+        MI_HABER=MI_HABER+HABER
+     
+        IF DEUD_120>0 .AND. MI_HABER>0
+           IF DEUD_120>=MI_HABER
+             DEUD_120=DEUD_120-MI_HABER
+             MI_HABER=0
+           ELSE
+             MI_HABER=MI_HABER-DEUD_120
+             DEUD_120=0
+           ENDIF
+        ENDIF
+
+        IF DEUD_90>0 .AND. MI_HABER>0
+           IF DEUD_90>=MI_HABER
+             DEUD_90=DEUD_90-MI_HABER
+             MI_HABER=0
+           ELSE
+             MI_HABER=MI_HABER-DEUD_90
+             DEUD_90=0
+           ENDIF
+        ENDIF
+
+        IF DEUD_60>0 .AND. MI_HABER>0
+           IF DEUD_60>=MI_HABER
+             DEUD_60=DEUD_60-MI_HABER
+             MI_HABER=0
+           ELSE
+             MI_HABER=MI_HABER-DEUD_60
+             DEUD_60=0
+           ENDIF
+        ENDIF
+
+        IF DEUD_30>0 .AND. MI_HABER>0
+           IF DEUD_30>=MI_HABER
+             DEUD_30=DEUD_30-MI_HABER
+             MI_HABER=0
+           ELSE
+             MI_HABER=MI_HABER-DEUD_30
+             DEUD_30=0
+           ENDIF
+        ENDIF
+
+        IF DEUD_0>0 .AND. MI_HABER>0
+           IF DEUD_0>=MI_HABER
+             DEUD_0=DEUD_0-MI_HABER
+             MI_HABER=0
+           ELSE
+             MI_HABER=MI_HABER-DEUD_0
+             DEUD_0=0
+           ENDIF
+        ENDIF
+
+        IF DEUD_0+DEUD_30+DEUD_60+DEUD_90+DEUD_120<=0 .AND. MI_HABER>0
+          DO CASE
+            CASE FECHAF-FECHA <=30 
+                DEUD_0  =DEUD_0-MI_HABER
+            CASE FECHAF-FECHA <=60 
+                DEUD_30 =DEUD_30-MI_HABER
+            CASE FECHAF-FECHA <=90 
+                DEUD_60 =DEUD_60-MI_HABER
+            CASE FECHAF-FECHA <=120 
+                DEUD_90 =DEUD_90-MI_HABER
+            CASE FECHAF-FECHA >120 
+                DEUD_120=DEUD_120-MI_HABER
+          ENDCASE
+          MI_HABER=0 
+        ENDIF  
+      ENDIF
+      SKIP
+    ENDDO
+
+*********** ACTUALIZACION DE TABLA DE CLIENTES ***************
+
+  SELECT V_CLIENT 
+  IF LOCK()
+    REPLACE CL_SALD_DB WITH T_DB, CL_SALD_HB WITH T_HB, CL_SALD_AC WITH T_SALDO
+    REPLACE CL_0 WITH DEUD_0, CL_30 WITH DEUD_30, CL_60 WITH DEUD_60, CL_90 WITH DEUD_90, CL_120 WITH DEUD_120
+    REPLACE CL_FINANC WITH FINANC
+  ENDIF
+  
+  IF CL_SALD_AC<>0
+    @ 7,5 SAY 'CLIENTE: '+CL_COD_CL+'-  '+CL_RAZON+'  SALDO'+TRANSFORM(CL_SALD_AC,'99,999,999.99') COLOR B*/GR
+    @ 8,5 SAY 'DEUDA  1-30  dias:'+TRANSFORM(CL_0,'9,999,999.99')
+    @ 9,5 SAY 'DEUDA 31-60  dias:'+TRANSFORM(CL_30,'9,999,999.99')
+    @ 10,5 SAY 'DEUDA 61-90  dias:'+TRANSFORM(CL_60,'9,999,999.99')
+    @ 11,5 SAY 'DEUDA 91-120 dias:'+TRANSFORM(CL_90,'9,999,999.99')
+    @ 12,5 SAY 'DEUDA 121 o mas  :'+TRANSFORM(CL_120,'9,999,999.99')+'  TOTAL DEUDA: '+TRANSFORM(CL_0+CL_30+CL_60+CL_90+CL_120,'99,999,999.99')+IIF(CL_0+CL_30+CL_60+CL_90+CL_120<>CL_SALD_AC,' ####','')
+    @ 13,25 SAY 'COSTO FINANCIERO= '+TRANSFORM(FINANC,'9,999,999.99') COLOR R/GR*
+  ENDIF
+***************************************************************
+  SELECT V_CLIENT
+  SKIP
+ENDDO
+
+SELECT ESTADOS
+USE
+
+DELETE FILE (EST_ARCH+'.DBF') 
+DELETE FILE (EST_ARCH+'.CDX') 
+
+CLOSE DATA
+CLEAR
+DO V_FINPRO.SPR
+CLEAR
+RETURN
+
+
+
+FUNCTION GET_EMPR
+*****************
+PARAMETER EMPR
+SELECT 0
+USE V_EMPR ORDER EMPR
+SEEK EMPR
+IF EOF()
+  USE
+  RETURN .F.
+ELSE
+  MI_EMPRESA=EM_DESCR
+  @ 8,37 SAY MI_EMPRESA
+  USE
+  RETURN .T.
+ENDIF
